@@ -124,12 +124,13 @@ export function Chart({ snap, received, selected, onPort, onRoute, className = "
           const isSel = selected === n.id;
           const armed = n.id !== "socotra" || n.hashrate > 0;
           return (
-            <g key={n.id} opacity={n.online ? dim(n.id) : 0.35} className={onPort ? "cursor-pointer" : ""} onClick={() => onPort?.(n.id)}
-              role={onPort ? "button" : undefined} tabIndex={onPort ? 0 : undefined} aria-label={onPort ? `${n.name}: block ${n.height}${n.online ? "" : ", offline"}` : undefined}
+            <g key={n.id} opacity={n.online ? dim(n.id) : 0.35} className={onPort ? "group cursor-pointer outline-none" : ""} onClick={() => onPort?.(n.id)}
+              role={onPort ? "button" : undefined} tabIndex={onPort ? 0 : undefined} aria-label={onPort ? `Open ${n.name}: block ${n.height}${n.online ? "" : ", offline"}` : undefined}
               onKeyDown={(e) => { if (onPort && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onPort(n.id); } }}>
               <circle cx={x} cy={y} r={34 * s} fill="url(#glow)" opacity={isSel ? 1 : 0} />
               <circle cx={x} cy={y} r={7 * s} fill={n.withhold ? "var(--color-coral)" : armed ? "var(--color-ink)" : "var(--color-sea)"} stroke={isSel ? "var(--color-brass)" : "var(--color-ink)"} strokeWidth={(isSel ? 2.4 : 1.4) * s} />
               {onPort && <circle cx={x} cy={y} r={22 * s} fill="transparent" />}
+              {onPort && <circle cx={x} cy={y} r={14 * s} fill="none" stroke="var(--color-brass)" strokeWidth={1.5 * s} className="opacity-0 transition-opacity group-hover:opacity-70 group-focus-visible:opacity-100" />}
               <text x={x + L.dx * s} y={y + L.dy * s} textAnchor={L.anchor} fill="var(--color-ink)" fontSize={font} fontFamily="var(--font-display)" letterSpacing=".1em">
                 {small ? CODE[n.id] : n.name.toUpperCase()}
               </text>

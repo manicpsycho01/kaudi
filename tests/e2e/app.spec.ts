@@ -59,6 +59,22 @@ test("sea: a payment is accepted, sails out and gets confirmed", async ({ page }
   await expect(asha.getByRole("cell").nth(2)).toHaveText("94.999", { timeout: 60_000 });
 });
 
+test("sea: clicking a port opens the chain through its eyes, with working controls", async ({ page }) => {
+  await page.goto("/sea");
+  await expect(page.locator("[data-block]").first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: /^Open Malacca: block/ }).click();
+  const sheet = page.getByRole("dialog", { name: /Malacca: the chain through its eyes/ });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByText("Chain height")).toBeVisible();
+  await expect(sheet.getByRole("heading", { name: "Its latest blocks" })).toBeVisible();
+  await expect(sheet.getByText("Asha")).toBeVisible();
+  await sheet.getByRole("button", { name: "Take offline" }).click();
+  await expect(sheet.getByText("offline", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Open Malacca: block \d+, offline/ })).toBeAttached();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+});
+
 test("sea: a forged block is refused by name", async ({ page }) => {
   await page.goto("/sea");
   await expect(page.locator("[data-block]").first()).toBeVisible({ timeout: 30_000 });

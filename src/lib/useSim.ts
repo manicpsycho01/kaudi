@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Action } from "@/sim/sim";
-import type { BlockDetail, Snap, TxDetail } from "@/sim/snapshot";
+import type { BlockDetail, PortDetail, Snap, TxDetail } from "@/sim/snapshot";
 import type { FromWorker, ToWorker } from "@/sim/worker";
 import type { PortId } from "@/sim/world";
 
@@ -49,6 +49,7 @@ export function useSim(opts: SimOptions, key = "") {
     step: useCallback((ms: number) => post({ type: "step", ms }), [post]),
     block: useCallback((hash: string, at: PortId) => ask<BlockDetail | null>({ type: "block", hash, at }), [ask]),
     tx: useCallback((txid: string, at: PortId) => ask<TxDetail | null>({ type: "tx", txid, at }), [ask]),
+    port: useCallback((port: PortId) => ask<PortDetail>({ type: "port", port }), [ask]),
     history: useCallback(() => ask<{ seed: string; script: { t: number; action: Action }[] }>({ type: "history" }), [ask]),
   };
 }

@@ -24,7 +24,7 @@ export function layout(blocks: TreeBlock[]) {
   return { row, minH, rows: next + 1 };
 }
 
-export function BlockTree({ snap, onSelect, selected, className = "" }: { snap: Snap | null; onSelect?: (hash: string) => void; selected?: string | null; className?: string }) {
+export function BlockTree({ snap, onSelect, selected, port, className = "" }: { snap: Snap | null; onSelect?: (hash: string) => void; selected?: string | null; port?: string | null; className?: string }) {
   const scroller = useRef<HTMLDivElement>(null);
   const blocks = useMemo(() => snap?.tree ?? [], [snap]);
   const { row, minH, rows } = useMemo(() => layout(blocks), [blocks]);
@@ -53,12 +53,13 @@ export function BlockTree({ snap, onSelect, selected, className = "" }: { snap: 
         {blocks.map((b, i) => {
           const { x, y } = pos(b);
           const orphan = !b.mainOf.length;
+          const theirs = port ? b.mainOf.includes(port as never) : false;
           const fresh = snap ? snap.t - b.foundAt < 2500 : false;
           const zeros = b.hash.match(/^0*/)![0].length;
           return (
             <button key={b.hash} type="button" onClick={() => onSelect?.(b.hash)} data-block={b.hash} data-orphan={orphan || undefined}
               aria-label={`Block ${b.height}, mined by ${minerName(b.miner)}, ${b.txs} transaction${b.txs === 1 ? "" : "s"}${orphan ? ", orphaned" : ""}${b.secret ? ", secret" : ""}`}
-              className={`absolute flex flex-col justify-between border px-2 py-1.5 text-left transition-colors hover:border-brass ${selected === b.hash ? "border-brass bg-sea-3" : orphan ? "border-line-2 bg-sea" : "border-line bg-sea-2"} ${b.secret ? "border-dashed !border-coral" : ""}`}
+              className={`absolute flex flex-col justify-between border px-2 py-1.5 text-left transition-colors hover:border-brass ${selected === b.hash ? "border-brass bg-sea-3" : theirs ? "border-brass/70 bg-sea-2" : orphan ? "border-line-2 bg-sea" : "border-line bg-sea-2"} ${b.secret ? "border-dashed !border-coral" : ""}`}
               style={{ left: x, top: y, width: W, height: H, opacity: orphan ? 0.55 : 1, animation: fresh && i === blocks.length - 1 ? "flash 2.2s ease-out" : undefined }}>
               <span className="flex items-baseline justify-between">
                 <span className="mono text-[13px] text-ink">#{b.height}</span>

@@ -5,7 +5,7 @@ import { merkleProof } from "@/chain/merkle";
 import { blockReward } from "@/chain/params";
 import type { Tx } from "@/chain/tx";
 import type { Sim, LogEntry } from "./sim";
-import { ROUTES, routeKey, WEST, type PortId } from "./world";
+import { latencyMs, PORTS, ROUTES, routeKey, WEST, type PortId } from "./world";
 
 export type NodeSnap = { id: PortId; name: string; height: number; tip: string; mempool: number; hashrate: number; online: boolean; withhold: boolean; secret: number; lastReject: { t: number; code: string; rule: string; detail: string; what: string } | null };
 export type TreeBlock = { hash: string; parent: string; height: number; miner: string; txs: number; tipOf: PortId[]; mainOf: PortId[]; secret: boolean; foundAt: number };
@@ -118,4 +118,35 @@ export function blockDetail(sim: Sim, hash: string, at: PortId): BlockDetail | n
 export function txDetail(sim: Sim, id: string, at: PortId): TxDetail | null {
   const t = findTx(sim, at, id) ?? [...sim.nodes.values()].map((n) => findTx(sim, n.id, id)).find(Boolean);
   return t ? describeTx(sim, at, t) : null;
+}
+
+export type PortDetail = {
+  id: PortId; name: string; note: string; height: number; tip: string; hashrate: number; share: number; online: boolean; withhold: boolean; secret: number;
+  balances: { name: string; confirmed: bigint; pending: bigint }[];
+  mempool: { id: string; label: string; fee: bigint }[];
+  chain: { hash: string; height: number; miner: string; txs: number }[];
+  peers: { id: PortId; name: string; up: boolean; latencyMs: number }[];
+  rejects: { t: number; code: string; rule: string; detail: string; what: string }[];
+  agreesWith: PortId[];
+};
+
+/** One port's view of the world — its chain, its balances, its queue — which can differ from its neighbours'. */
+export function portDetail(sim: Sim, id: PortId): PortDetail {
+  const n = sim.node(id), meta = PORTS.find((p) => p.id === id)!;
+  const total = [...sim.nodes.values()].reduce((s, x) => s + (x.online ? x.hashrate : 0), 0) || 1;
+  const nameOf = (pkh: Uint8Array) => PEOPLE.find((p) => hex(personKey(p.id).pkh) === hex(pkh))?.name ?? [...sim.nodes.values()].find((m) => hex(m.key.pkh) === hex(pkh))?.name ?? "someone";
+  const main = n.chain.mainChain();
+  return {
+    id, name: n.name, note: meta.note, height: n.chain.height, tip: n.chain.tip, hashrate: n.hashrate, share: n.online ? n.hashrate / total : 0,
+    online: n.online, withhold: n.withhold, secret: n.secret.length,
+    balances: PEOPLE.map((p) => { const k = personKey(p.id); return { name: p.name, confirmed: n.chain.view.balance(k.pkh), pending: n.mempool.pendingView.balance(k.pkh) }; }),
+    mempool: n.mempool.txs.slice(-12).map((t) => {
+      const payer = PEOPLE.find((p) => hex(personKey(p.id).pubkey) === hex(t.tx.inputs[0]?.pubkey ?? new Uint8Array()))?.name ?? "someone";
+      return { id: t.tx.id, label: `${payer} → ${nameOf(t.tx.outputs[0]!.pkh)}`, fee: t.fee };
+    }),
+    chain: main.slice(-8).reverse().map((h) => { const e = n.chain.entries.get(h)!; return { hash: h, height: e.height, miner: sim.minerOf(e.block), txs: e.block.txs.length }; }),
+    peers: sim.peers(id).map((p) => ({ id: p, name: sim.node(p).name, up: sim.linkUp(id, p), latencyMs: latencyMs(id, p) })),
+    rejects: n.rejects.slice(-5).reverse().map((r) => ({ t: r.t, what: r.what, ...r.reject })),
+    agreesWith: [...sim.nodes.values()].filter((m) => m.id !== id && m.chain.tip === n.chain.tip).map((m) => m.id),
+  };
 }

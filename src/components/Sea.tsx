@@ -5,6 +5,7 @@ import type { PortId } from "@/sim/world";
 import { BlockTree } from "./BlockTree";
 import { Chart } from "./Chart";
 import { Inspector, type Inspecting } from "./Inspector";
+import { PortSheet } from "./PortSheet";
 import { Controls, Log, MonsoonButton, Ports, Wallets } from "./Panels";
 import { NAME } from "./ports";
 import type { Run } from "./Replayable";
@@ -17,6 +18,9 @@ export function Sea({ replay }: { replay?: Run | null }) {
   const sim = useSim(replay ? { seed: replay.seed, script: replay.script, warmupBlocks: 6 } : { seed: "the-open-sea", warmupBlocks: 6 });
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("wallets");
   const [port, setPort] = useState<PortId>("calicut");
+  const [sheet, setSheet] = useState<PortId | null>(null);
+  const closeSheet = useCallback(() => setSheet(null), []);
+  const openPort = useCallback((p: PortId) => { setPort(p); setSheet(p); }, []);
   const [inspect, setInspect] = useState<Inspecting>(null);
   const load = useMemo(() => ({ block: sim.block, tx: sim.tx }), [sim.block, sim.tx]);
   const close = useCallback(() => setInspect(null), []);
@@ -26,7 +30,7 @@ export function Sea({ replay }: { replay?: Run | null }) {
       <div className="flex flex-wrap items-end justify-between gap-4 pt-6 pb-4">
         <div>
           <h1 className="display text-[clamp(2rem,4.5vw,3.4rem)]">The open sea</h1>
-          <p className="mt-1 max-w-2xl text-ink-2">Eight ports, one chain — when they agree. Click a lane to cut it, a port to see the chain through its eyes, a block to open it.</p>
+          <p className="mt-1 max-w-2xl text-ink-2">Eight ports, one chain — when they agree. Click a port to open it and see the chain through its eyes, a lane to cut it, a block to inspect it.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2"><Controls sim={sim} /><MonsoonButton sim={sim} /><ShareRun sim={sim} path="/sea" /></div>
       </div>
@@ -34,7 +38,7 @@ export function Sea({ replay }: { replay?: Run | null }) {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(360px,1fr)]">
         <div className="min-w-0">
           <div className="neat bg-sea-2 p-1">
-            <Chart snap={sim.snap} received={sim.received} selected={port} onPort={setPort} onRoute={(a, b, cut) => void sim.act({ type: "route", a, b, cut })} />
+            <Chart snap={sim.snap} received={sim.received} selected={port} onPort={openPort} onRoute={(a, b, cut) => void sim.act({ type: "route", a, b, cut })} />
           </div>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 label text-muted" aria-hidden>
             <span><span className="mr-1.5 inline-block h-2.5 w-2.5 bg-ink align-middle" style={{ clipPath: "polygon(30% 0,100% 70%,30% 70%)" }} />block in flight</span>
@@ -47,7 +51,7 @@ export function Sea({ replay }: { replay?: Run | null }) {
               <h2 id="tree-h" className="label text-brass">The chain, every branch</h2>
               <p className="label text-muted">Tags under a block = ports whose best chain ends there</p>
             </div>
-            <BlockTree snap={sim.snap} className="mt-2 border border-line bg-sea" onSelect={(hash) => setInspect({ kind: "block", hash })} />
+            <BlockTree snap={sim.snap} port={port} className="mt-2 border border-line bg-sea" onSelect={(hash) => setInspect({ kind: "block", hash })} />
           </section>
         </div>
 
@@ -60,12 +64,13 @@ export function Sea({ replay }: { replay?: Run | null }) {
           </div>
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="p-4 sm:p-5">
             {tab === "wallets" && <Wallets sim={sim} onOpen={setInspect} />}
-            {tab === "ports" && <Ports sim={sim} selected={port} onSelect={setPort} />}
+            {tab === "ports" && <Ports sim={sim} selected={port} onSelect={openPort} />}
             {tab === "log" && <Log snap={sim.snap} onOpen={setInspect} />}
           </div>
-          <p className="label border-t border-line px-4 py-3 text-muted sm:px-5">Inspecting as {NAME[port]}</p>
+          <p className="label border-t border-line px-4 py-3 text-muted sm:px-5">Highlighted in the tree: {NAME[port]}&apos;s chain · <button type="button" className="text-brass underline-offset-4 hover:underline" onClick={() => openPort(port)}>open {NAME[port]}</button></p>
         </aside>
       </div>
+      <PortSheet sim={sim} port={inspect ? null : sheet} onClose={closeSheet} onOpen={setInspect} />
       <Inspector what={inspect} at={port} load={load} onClose={close} onOpen={setInspect} />
     </div>
   );

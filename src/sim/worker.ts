@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 import { Sim, type Action } from "./sim";
-import { blockDetail, snapshot, txDetail } from "./snapshot";
+import { blockDetail, portDetail, snapshot, txDetail } from "./snapshot";
 import type { PortId } from "./world";
 
 export type ToWorker =
@@ -11,7 +11,8 @@ export type ToWorker =
   | { type: "step"; ms: number }
   | { type: "block"; id: number; hash: string; at: PortId }
   | { type: "tx"; id: number; txid: string; at: PortId }
-  | { type: "history"; id: number };
+  | { type: "history"; id: number }
+  | { type: "port"; id: number; port: PortId };
 export type FromWorker =
   | { type: "snap"; snap: ReturnType<typeof snapshot>; speed: number; paused: boolean }
   | { type: "reply"; id: number; value: unknown };
@@ -41,6 +42,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
   else if (m.type === "step") { sim.advance(m.ms); send(); }
   else if (m.type === "block") post({ type: "reply", id: m.id, value: blockDetail(sim, m.hash, m.at) });
   else if (m.type === "tx") post({ type: "reply", id: m.id, value: txDetail(sim, m.txid, m.at) });
+  else if (m.type === "port") post({ type: "reply", id: m.id, value: portDetail(sim, m.port) });
   else if (m.type === "history") post({ type: "reply", id: m.id, value: { seed: sim.seed, script: [...scripted, ...sim.history].sort((a, b) => a.t - b.t) } });
 };
 
