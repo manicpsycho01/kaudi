@@ -12,7 +12,7 @@ export default function Voyages() {
       <main id="main" className="mx-auto max-w-[1100px] px-4 py-12 sm:px-8 sm:py-16">
         <p className="label text-brass">Seven voyages</p>
         <h1 className="display mt-3 text-[clamp(2.6rem,6vw,4.6rem)]">Learn it by running it</h1>
-        <p className="mt-4 max-w-2xl text-[18px] text-ink-2">Each voyage is a few minutes long. The first three work on a single machine; from the fourth, the whole sea joins in.</p>
+        <p className="mt-4 max-w-2xl text-[18px] text-ink-2">Each voyage is a few minutes long. The first three work on a single machine; from the fourth, the whole sea joins in. New to all this? <Link href="/start" className="text-brass underline underline-offset-4">Read the five-minute story first</Link>.</p>
         <ol className="mt-10 grid gap-px border border-line bg-line sm:grid-cols-2">
           {VOYAGES.map((v) => (
             <li key={v.slug} className="bg-sea">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Cowrie } from "./Cowrie";
 
 const NAV = [
+  { href: "/start", label: "Start here", wide: true },
   { href: "/voyages", label: "Voyages" },
   { href: "/heist", label: "Heist" },
   { href: "/sea", label: "The sea" },

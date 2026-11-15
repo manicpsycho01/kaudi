@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const PAGES = ["/", "/heist", "/sea", "/voyages", "/voyages/the-broken-cowrie", "/voyages/keys-and-seals", "/voyages/counting-shells", "/voyages/the-race", "/voyages/the-monsoon", "/voyages/the-corsair", "/voyages/proof-in-a-pocket", "/rules", "/real"];
+const PAGES = ["/", "/start", "/heist", "/sea", "/voyages", "/voyages/the-broken-cowrie", "/voyages/keys-and-seals", "/voyages/counting-shells", "/voyages/the-race", "/voyages/the-monsoon", "/voyages/the-corsair", "/voyages/proof-in-a-pocket", "/rules", "/real"];
 
 function watch(page: Page) {
   const errs: string[] = [];
@@ -28,6 +28,17 @@ test("home: tells why it exists, who it's for, and leads with the heist", async 
   await expect(page.getByRole("heading", { name: "Who it's for" })).toBeVisible();
   await page.getByRole("link", { name: "Try to rob it" }).first().click();
   await expect(page).toHaveURL(/\/heist$/);
+});
+
+test("start here: the simple story covers the steps, the rules and what's pretend", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: /Start here — the five-minute story/ }).click();
+  await expect(page).toHaveURL(/\/start$/);
+  await expect(page.getByRole("heading", { name: "How a payment happens" })).toBeVisible();
+  await expect(page.locator("main ol > li")).toHaveCount(5);
+  await expect(page.getByRole("heading", { name: "The rules every town checks" })).toBeVisible();
+  await expect(page.getByText("Most work wins")).toBeVisible();
+  await expect(page.getByText("Pretend", { exact: true })).toBeVisible();
 });
 
 test("the network runs: blocks get mined and appear in the tree", async ({ page }) => {

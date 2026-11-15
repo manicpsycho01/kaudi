@@ -25,6 +25,7 @@ export function Landing() {
             <Link href={`/voyages/${VOYAGES[0]!.slug}`} className="btn">Begin the voyages</Link>
             <Link href="/sea" className="btn">Open the sea</Link>
           </div>
+          <p data-rise style={{ "--d": 5 } as React.CSSProperties} className="mt-4 text-[16px] text-ink-2">New to blockchains? <Link href="/start" className="text-brass underline underline-offset-4 hover:text-ink">Start here — the five-minute story</Link>.</p>
         </div>
         <div className="min-w-0" data-rise style={{ "--d": 2 } as React.CSSProperties}>
           <div className="neat bg-sea-2 p-1"><Chart snap={sim.snap} received={sim.received} /></div>
