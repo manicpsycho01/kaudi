@@ -1,0 +1,11 @@
+export type Voyage = { n: number; slug: string; title: string; kicker: string; summary: string; learn: string[] };
+export const VOYAGES: Voyage[] = [
+  { n: 1, slug: "the-broken-cowrie", title: "The broken cowrie", kicker: "Hashes and the chain", summary: "Change one word and the fingerprint changes completely. Chain the fingerprints, and rewriting history means redoing all the work after it.", learn: ["SHA-256", "Proof of work", "Why old blocks are hard to change"] },
+  { n: 2, slug: "keys-and-seals", title: "Keys and seals", kicker: "Ownership and signatures", summary: "Your coins belong to whoever can sign for an address. Make a key, sign a message, then try to spend someone else's coin.", learn: ["Schnorr signatures", "Addresses", "What “owning” a coin means"] },
+  { n: 3, slug: "counting-shells", title: "Counting shells", kicker: "Coins, change and fees", summary: "There are no balances, only unspent coins. Pick which ones to spend, make change, and see where the fee comes from.", learn: ["UTXOs", "Change outputs", "Fees"] },
+  { n: 4, slug: "the-race", title: "The race", kicker: "Mining and propagation", summary: "Eight ports race to find the next block. News takes time to cross the sea — so sometimes two ports win at once.", learn: ["Mining", "Propagation delay", "Natural forks"] },
+  { n: 5, slug: "the-monsoon", title: "The monsoon", kicker: "Splits and reorgs", summary: "Close the sea and each half builds its own history. Reopen it, and the side with less work throws its blocks away.", learn: ["Network partitions", "Most-work rule", "Reorgs and orphaned blocks"] },
+  { n: 6, slug: "the-corsair", title: "The Corsair", kicker: "A double spend", summary: "A pirate with most of the hash power pays a merchant, waits for the goods, then rewrites history to take the money back.", learn: ["51% attacks", "Confirmations", "Why you wait for six"] },
+  { n: 7, slug: "proof-in-a-pocket", title: "Proof in a pocket", kicker: "Merkle proofs", summary: "Prove one payment is inside a block with three hashes instead of the whole block — the trick that lets phones check a chain.", learn: ["Merkle trees", "Inclusion proofs", "Light clients"] },
+];
+export const voyage = (slug: string) => VOYAGES.find((v) => v.slug === slug);

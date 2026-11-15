@@ -27,7 +27,9 @@ export type Action =
   | { type: "online"; node: PortId; online: boolean }
   | { type: "withhold"; node: PortId; on: boolean }
   | { type: "release"; node: PortId }
-  | { type: "forge"; node: PortId; kind: ForgeKind };
+  | { type: "forge"; node: PortId; kind: ForgeKind }
+  | { type: "watch"; txid: string; label: string }
+  | { type: "batch"; actions: Action[] };
 export type ForgeKind = "overpay" | "steal" | "nopow" | "future" | "rewrite";
 
 export type LogKind = "mined" | "reorg" | "reject" | "tx" | "net" | "info" | "drop";
@@ -92,6 +94,8 @@ export class Sim {
   monsoon = false;
   log: LogEntry[] = [];
   history: { t: number; action: Action }[] = [];
+  /** Payments whose confirmations the page is following, port by port. */
+  watched: { txid: string; label: string }[] = [];
   boats = new Map<number, { id: number; from: PortId; to: PortId; sent: number; arrive: number; kind: Msg["kind"]; ref: string; lost?: boolean }>();
   /** Every block any node has seen, for drawing the tree. */
   readonly blocks = new Map<string, { block: Block; miner: string; height: number; foundAt: number }>();
@@ -253,6 +257,12 @@ export class Sim {
         return { ok: true, message: "" };
       }
       case "forge": return this.forge(a.node, a.kind);
+      case "batch": {
+        // Several actions at the same simulated instant — e.g. two conflicting payments sent at once.
+        const rs = a.actions.map((x) => this.apply(x));
+        return { ok: rs.every((r) => r.ok), message: rs.map((r) => r.message).filter(Boolean).join(" "), ref: rs.map((r) => r.ref ?? "").join(",") };
+      }
+      case "watch": if (!this.watched.some((w) => w.txid === a.txid)) this.watched.push({ txid: a.txid, label: a.label }); return { ok: true, message: "" };
     }
   }
 
@@ -333,21 +343,25 @@ export class Sim {
   }
 
   // ── time ─────────────────────────────────────────────────
-  /** Advances simulated time by `ms`, delivering messages and running every miner's hashes in 50 ms slices. */
+  /**
+   * Advances simulated time by `ms`. Mining happens on a fixed grid (every 50 simulated ms, a fixed number of
+   * hashes per port), and anything scheduled strictly before a grid point runs before that point's hashing.
+   * So the outcome never depends on how the caller chunks time — which is what makes shared replays exact.
+   */
   advance(ms: number) {
     const end = this.now + ms;
-    while (this.now < end) {
-      const sliceEnd = Math.min(end, this.now + SLICE_MS);
-      for (let e = this.q.peek(); e && e.t <= sliceEnd; e = this.q.peek()) {
+    for (;;) {
+      const B = (Math.floor(this.now / SLICE_MS) + 1) * SLICE_MS;
+      for (let e = this.q.peek(); e && e.t < B && e.t <= end; e = this.q.peek()) {
         this.q.pop();
         this.now = Math.max(this.now, e.t);
         if (e.type === "deliver") this.deliver(e);
         else this.apply(e.action);
       }
-      const dt = sliceEnd - this.now;
-      this.now = sliceEnd;
+      if (B > end) { this.now = end; return; }
+      this.now = B;
       for (const n of this.nodes.values()) {
-        const b = n.mine((n.hashrate * dt) / 1000, this.nowS);
+        const b = n.mine((n.hashrate * SLICE_MS) / 1000, this.nowS);
         if (!b) continue;
         this.blocks.set(b.hash, { block: b, miner: n.id, height: n.chain.tipEntry.height + 1, foundAt: this.now });
         const rs = n.chain.accept(b, this.nowS, this.now);

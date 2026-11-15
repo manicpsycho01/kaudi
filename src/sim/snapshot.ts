@@ -19,6 +19,7 @@ export type Snap = {
   people: { id: string; name: string; home: PortId; address: string; confirmed: bigint; pending: bigint }[];
   log: LogEntry[];
   bestHeight: number;
+  watched: { txid: string; label: string; conf: Record<string, number>; pending: Record<string, boolean> }[];
 };
 
 /** A plain-data picture of the simulation for the page (bigints survive postMessage). */
@@ -54,6 +55,11 @@ export function snapshot(sim: Sim, window = 18): Snap {
     people: PEOPLE.map((p) => { const bal = sim.balance(p.id); return { id: p.id, name: p.name, home: p.home as PortId, address: personKey(p.id).address, ...bal }; }),
     log: sim.log.slice(-80),
     bestHeight,
+    watched: sim.watched.map((w) => ({
+      ...w,
+      conf: Object.fromEntries(nodes.map((n) => [n.id, n.chain.confirmations(w.txid)])),
+      pending: Object.fromEntries(nodes.map((n) => [n.id, n.mempool.has(w.txid)])),
+    })),
   };
 }
 

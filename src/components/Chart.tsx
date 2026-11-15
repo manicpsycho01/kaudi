@@ -51,7 +51,7 @@ export function Chart({ snap, received, selected, onPort, onRoute, className = "
 
   const s = 1 / Math.max(scale, 0.3); // keeps text and marks a constant size on screen
   const small = scale < 0.62;
-  const font = 13 * s, mono = 11 * s;
+  const font = 13 * s, mono = 11.5 * s;
   const now = snap?.t ?? 0;
   const recent = (snap?.tree ?? []).filter((b) => now - b.foundAt < 1600 && b.miner in PORT_XY);
   const dim = (id: string) => (focus && !focus.includes(id as PortId) ? 0.35 : 1);
@@ -70,7 +70,7 @@ export function Chart({ snap, received, selected, onPort, onRoute, className = "
         </defs>
         <path d={GRATICULE} fill="none" stroke="var(--color-ink)" strokeOpacity=".06" strokeWidth={0.8 * s} />
         <line x1="0" x2={CHART.width} y1={CHART.equatorY} y2={CHART.equatorY} stroke="var(--color-brass)" strokeOpacity=".35" strokeDasharray={`${6 * s} ${5 * s}`} strokeWidth={s} />
-        {!small && <text x={CHART.width - 10} y={CHART.equatorY - 7} textAnchor="end" fill="var(--color-brass)" fillOpacity=".7" fontSize={mono} fontFamily="var(--font-mono)" letterSpacing=".15em">EQUATOR</text>}
+        {!small && <text x={300} y={CHART.equatorY - 7} textAnchor="middle" fill="var(--color-brass)" fillOpacity=".7" fontSize={mono} fontFamily="var(--font-mono)" letterSpacing=".15em">EQUATOR</text>}
         <path d={LAND} fill="var(--color-land)" />
         <path d={LAND} fill="url(#hatch)" stroke="var(--color-ink)" strokeOpacity=".28" strokeWidth={0.7 * s} />
 

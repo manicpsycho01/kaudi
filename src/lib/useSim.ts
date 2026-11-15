@@ -49,6 +49,7 @@ export function useSim(opts: SimOptions, key = "") {
     step: useCallback((ms: number) => post({ type: "step", ms }), [post]),
     block: useCallback((hash: string, at: PortId) => ask<BlockDetail | null>({ type: "block", hash, at }), [ask]),
     tx: useCallback((txid: string, at: PortId) => ask<TxDetail | null>({ type: "tx", txid, at }), [ask]),
+    history: useCallback(() => ask<{ seed: string; script: { t: number; action: Action }[] }>({ type: "history" }), [ask]),
   };
 }
 export type SimHandle = ReturnType<typeof useSim>;

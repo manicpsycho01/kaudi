@@ -17,6 +17,23 @@ describe("simulation", () => {
     expect(other.blocks.size).toBeGreaterThan(1);
   }, 120_000);
 
+  test("replay: scheduling the recorded actions reproduces the run exactly, however time is chunked", () => {
+    const a = new Sim("replay");
+    a.advance(9_137);
+    a.act({ type: "send", from: "asha", to: "bilal", amount: "3" });
+    for (let i = 0; i < 700; i++) a.advance(17 + (i % 5) * 13);
+    a.act({ type: "monsoon", on: true });
+    a.advance(23_456);
+    a.act({ type: "monsoon", on: false });
+    a.act({ type: "forge", node: "kolkata", kind: "overpay" });
+    a.advance(30_001);
+    const b = new Sim("replay");
+    for (const h of a.history) b.schedule(h.t, h.action);
+    while (b.now < a.now) b.advance(Math.min(1000, a.now - b.now));
+    expect([...b.nodes.values()].map((n) => n.chain.tip)).toEqual([...a.nodes.values()].map((n) => n.chain.tip));
+    expect(b.log.map((l) => l.t + l.text)).toEqual(a.log.map((l) => l.t + l.text));
+  }, 120_000);
+
   test("blocks arrive roughly every 8 simulated seconds and every port ends up agreeing", () => {
     const s = new Sim("pace");
     s.advance(160_000);
