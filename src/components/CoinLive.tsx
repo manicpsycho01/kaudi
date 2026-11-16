@@ -3,8 +3,27 @@ import { useCallback, useEffect, useState } from "react";
 import { COIN } from "@/content/coin";
 import { balanceOf, ethBalance, CLAIM_DATA, eraEnd, kdi, nextClaimAt, readCoin, recentClaims, short, type Claim, type CoinState } from "@/lib/kdi";
 
-type Eth = { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> };
-const eth = () => (typeof window !== "undefined" ? (window as unknown as { ethereum?: Eth }).ethereum : undefined);
+type Eth = { request: (a: { method: string; params?: unknown[] }) => Promise<unknown>; on?: (e: string, f: (x: unknown) => void) => void; removeListener?: (e: string, f: (x: unknown) => void) => void };
+type Announced = { info: { rdns: string; name: string }; provider: Eth };
+
+/**
+ * Finds the wallet to use. With several wallet extensions installed they fight over window.ethereum, so "connect"
+ * and "send" can land in different wallets (MetaMask then says the account isn't authorised). EIP-6963 lets each
+ * wallet announce itself; we pick MetaMask if present, and use that one provider for every step.
+ */
+let chosen: Eth | undefined;
+const announced: Announced[] = [];
+if (typeof window !== "undefined") {
+  window.addEventListener("eip6963:announceProvider", (e) => announced.push((e as CustomEvent<Announced>).detail));
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+}
+const eth = (): Eth | undefined => {
+  if (chosen) return chosen;
+  if (typeof window === "undefined") return undefined;
+  const pick = announced.find((a) => a.info.rdns === "io.metamask") ?? announced[0];
+  chosen = pick?.provider ?? (window as unknown as { ethereum?: Eth }).ethereum;
+  return chosen;
+};
 const HEX_CHAIN = "0x" + COIN.chainId.toString(16);
 const link = (path: string) => `${COIN.explorer}/${path}`;
 
@@ -31,6 +50,13 @@ export function CoinLive() {
 
   useEffect(() => { refresh(); const t = setInterval(refresh, 20000); return () => clearInterval(t); }, [refresh]);
   useEffect(() => { if (account) refreshMine(account); }, [account, refreshMine]);
+  useEffect(() => {
+    const w = eth();
+    if (!w?.on) return;
+    const onAccounts = (a: unknown) => { const list = a as string[]; setAccount(list[0] ?? null); setMsg(null); };
+    w.on("accountsChanged", onAccounts);
+    return () => w.removeListener?.("accountsChanged", onAccounts);
+  }, []);
 
   async function connect() {
     const w = eth();
@@ -58,9 +84,13 @@ export function CoinLive() {
         return;
       }
       setBusy("Confirm in your wallet…");
+      // Use whichever account the wallet has authorised right now (it may have changed since connecting).
+      const [from] = (await w.request({ method: "eth_requestAccounts" })) as string[];
+      if (!from) throw Object.assign(new Error("no account"), { code: 4100 });
+      if (from.toLowerCase() !== account.toLowerCase()) setAccount(from);
       const chain = (await w.request({ method: "eth_chainId" })) as string;
       if (chain.toLowerCase() !== HEX_CHAIN) await w.request({ method: "wallet_switchEthereumChain", params: [{ chainId: HEX_CHAIN }] });
-      const tx = (await w.request({ method: "eth_sendTransaction", params: [{ from: account, to: COIN.address, data: CLAIM_DATA }] })) as string;
+      const tx = (await w.request({ method: "eth_sendTransaction", params: [{ from, to: COIN.address, data: CLAIM_DATA }] })) as string;
       setBusy("Waiting for the next block…");
       for (let i = 0; i < 60; i++) {
         const r = await fetch(COIN.rpc, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getTransactionReceipt", params: [tx] }) }).then((x) => x.json());
@@ -70,11 +100,12 @@ export function CoinLive() {
         }
         await new Promise((res) => setTimeout(res, 2000));
       }
-      await Promise.all([refresh(), refreshMine(account)]);
+      await Promise.all([refresh(), refreshMine(from)]);
     } catch (e) {
       const err = e as { code?: number; message?: string; data?: { message?: string; data?: string } };
       const m = `${err.message ?? ""} ${err.data?.message ?? ""} ${err.data?.data ?? ""}`;
       setMsg({ tone: "err", text: err.code === 4001 ? "You cancelled in your wallet."
+        : err.code === 4100 ? "Your wallet hasn't authorised this site for the account it's using. In MetaMask, open the site connections (the globe icon), connect this site to your current account, then claim again. If you have more than one wallet extension, try with only MetaMask enabled."
         : /insufficient funds/i.test(m) ? "Your wallet doesn't have enough Base Sepolia ETH for gas. Claim some free from a faucet, then try again."
         : /CoolingDown|0xffada05d/i.test(m) ? "You've already claimed today. Come back tomorrow."
         : /chain|network/i.test(m) ? "Your wallet is on a different network. Switch MetaMask to Base Sepolia and try again."

@@ -261,3 +261,37 @@ test("the coin page explains KDI honestly and links from the nav", async ({ page
   await page.goto("/real");
   await expect(page.getByRole("link", { name: "KDI" })).toHaveAttribute("href", "/coin");
 });
+
+test("claiming uses MetaMask even when another wallet holds window.ethereum", async ({ page, isMobile }) => {
+  test.skip(isMobile, "once is enough");
+  const USER = "0x55aA79B271A5dfC3b06c3532ad7f70e13bDecE82"; // has test ETH and hasn't claimed
+  const TX = "0x7a20c4fcd9a959a89f0ce4a0187ca32778511cbf01990be63a8b86bdd85fa614"; // a real, successful claim (for the receipt)
+  await page.addInitScript(([user, tx]) => {
+    const sent: unknown[] = [];
+    (window as unknown as { __sent: unknown[] }).__sent = sent;
+    // a competing wallet in window.ethereum that never authorised this site
+    (window as unknown as { ethereum: unknown }).ethereum = { request: async ({ method }: { method: string }) => {
+      if (method === "eth_requestAccounts") return [user];
+      throw Object.assign(new Error("The requested account and/or method has not been authorized by the user."), { code: 4100 });
+    } };
+    const metamask = { request: async ({ method, params }: { method: string; params?: unknown[] }) => {
+      if (method === "eth_requestAccounts") return [user.toLowerCase()];
+      if (method === "eth_chainId") return "0x14a34";
+      if (method === "wallet_switchEthereumChain") return null;
+      if (method === "eth_sendTransaction") { sent.push(params); return tx; }
+      return null;
+    }, on: () => {}, removeListener: () => {} };
+    const announce = () => window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail: Object.freeze({ info: { rdns: "io.metamask", name: "MetaMask", uuid: "test", icon: "" }, provider: metamask }) }));
+    window.addEventListener("eip6963:requestProvider", announce);
+    announce();
+  }, [USER, TX]);
+  await page.goto("/coin");
+  await page.getByRole("button", { name: "Connect wallet" }).click();
+  await expect(page.getByText(/ETH for gas/)).toBeVisible({ timeout: 20000 });
+  await page.getByRole("button", { name: /Claim .* KDI/ }).click();
+  await expect(page.getByText("Claimed. The KDI are in your wallet.")).toBeVisible({ timeout: 30000 });
+  const sent = await page.evaluate(() => (window as unknown as { __sent: { from: string; data: string }[][] }).__sent);
+  expect(sent).toHaveLength(1);
+  expect(sent[0]![0]!.from.toLowerCase()).toBe(USER.toLowerCase());
+  expect(sent[0]![0]!.data).toBe("0x4e71d92d");
+});
