@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { COIN } from "@/content/coin";
-import { balanceOf, CLAIM_DATA, eraEnd, kdi, nextClaimAt, readCoin, recentClaims, short, type Claim, type CoinState } from "@/lib/kdi";
+import { balanceOf, ethBalance, CLAIM_DATA, eraEnd, kdi, nextClaimAt, readCoin, recentClaims, short, type Claim, type CoinState } from "@/lib/kdi";
 
 type Eth = { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> };
 const eth = () => (typeof window !== "undefined" ? (window as unknown as { ethereum?: Eth }).ethereum : undefined);
@@ -14,7 +14,8 @@ export function CoinLive() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [error, setError] = useState("");
   const [account, setAccount] = useState<string | null>(null);
-  const [mine, setMine] = useState<{ balance: bigint; next: bigint } | null>(null);
+  const [mine, setMine] = useState<{ balance: bigint; next: bigint; eth: bigint } | null>(null);
+  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState<{ text: string; tx?: string; tone: "ok" | "err" } | null>(null);
 
@@ -26,7 +27,7 @@ export function CoinLive() {
       setError("");
     } catch { setError("Couldn't reach Base Sepolia just now. The numbers will appear when it answers."); }
   }, []);
-  const refreshMine = useCallback(async (a: string) => setMine({ balance: await balanceOf(a), next: await nextClaimAt(a) }), []);
+  const refreshMine = useCallback(async (a: string) => { const [balance, next, eth] = await Promise.all([balanceOf(a), nextClaimAt(a), ethBalance(a)]); setMine({ balance, next, eth }); return eth; }, []);
 
   useEffect(() => { refresh(); const t = setInterval(refresh, 20000); return () => clearInterval(t); }, [refresh]);
   useEffect(() => { if (account) refreshMine(account); }, [account, refreshMine]);
@@ -49,8 +50,14 @@ export function CoinLive() {
   async function claim() {
     const w = eth();
     if (!w || !account) return;
-    setBusy("Confirm in your wallet…"); setMsg(null);
+    setBusy("Checking…"); setMsg(null);
     try {
+      // Claiming is a transaction, so the wallet needs a little Base Sepolia ETH for gas. Check first and say so plainly.
+      if ((await refreshMine(account)) === 0n) {
+        setMsg({ tone: "err", text: "Your wallet has no Base Sepolia ETH, and a claim needs a tiny amount for gas. Copy your address, claim free test ETH from a faucet (Coinbase's: portal.cdp.coinbase.com/products/faucet → Base Sepolia → ETH), then claim again." });
+        return;
+      }
+      setBusy("Confirm in your wallet…");
       const chain = (await w.request({ method: "eth_chainId" })) as string;
       if (chain.toLowerCase() !== HEX_CHAIN) await w.request({ method: "wallet_switchEthereumChain", params: [{ chainId: HEX_CHAIN }] });
       const tx = (await w.request({ method: "eth_sendTransaction", params: [{ from: account, to: COIN.address, data: CLAIM_DATA }] })) as string;
@@ -65,10 +72,13 @@ export function CoinLive() {
       }
       await Promise.all([refresh(), refreshMine(account)]);
     } catch (e) {
-      const m = String((e as { message?: string }).message ?? "");
-      setMsg({ tone: "err", text: (e as { code?: number }).code === 4001 ? "You cancelled in your wallet."
-        : /insufficient funds|gas/i.test(m) ? "Claiming costs a tiny amount of gas. Get free Base Sepolia ETH from a faucet, then try again."
-        : /CoolingDown|0x[0-9a-f]{8}/i.test(m) ? "You've already claimed today. Come back tomorrow." : "The claim didn't go through. Try again." });
+      const err = e as { code?: number; message?: string; data?: { message?: string; data?: string } };
+      const m = `${err.message ?? ""} ${err.data?.message ?? ""} ${err.data?.data ?? ""}`;
+      setMsg({ tone: "err", text: err.code === 4001 ? "You cancelled in your wallet."
+        : /insufficient funds/i.test(m) ? "Your wallet doesn't have enough Base Sepolia ETH for gas. Claim some free from a faucet, then try again."
+        : /CoolingDown|0xffada05d/i.test(m) ? "You've already claimed today. Come back tomorrow."
+        : /chain|network/i.test(m) ? "Your wallet is on a different network. Switch MetaMask to Base Sepolia and try again."
+        : `The claim didn't go through. Your wallet said: ${m.trim().slice(0, 180) || "no reason given"}` });
     } finally { setBusy(""); }
   }
 
@@ -114,7 +124,8 @@ export function CoinLive() {
             <>
               <button type="button" className="btn btn-signal" onClick={claim} disabled={!!busy || !!waiting || !state?.drip}>{busy || (waiting ? "Claimed today" : `Claim ${state ? kdi(state.drip, 6) : ""} KDI`)}</button>
               <button type="button" className="btn" onClick={addToWallet}>Show KDI in my wallet</button>
-              <span className="text-[15px] text-ink-2">{short(account)} · {mine ? `${kdi(mine.balance)} KDI` : "…"}{waiting ? ` · next claim ${new Date(Number(mine!.next) * 1000).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}` : ""}</span>
+              <button type="button" className="btn" onClick={async () => { await navigator.clipboard.writeText(account); setCopied(true); }}>{copied ? "Address copied" : "Copy my address"}</button>
+              <span className="text-[15px] text-ink-2">{short(account)} · {mine ? `${kdi(mine.balance)} KDI · ${(Number(mine.eth) / 1e18).toFixed(6)} ETH for gas` : "…"}{waiting ? ` · next claim ${new Date(Number(mine!.next) * 1000).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}` : ""}</span>
             </>
           )}
         </div>

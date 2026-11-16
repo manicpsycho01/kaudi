@@ -24,6 +24,7 @@ export async function readCoin(): Promise<CoinState> {
   ]);
   return { minted, supply, era, drip, block };
 }
+export const ethBalance = (a: string) => rpc<string>("eth_getBalance", [a, "latest"]).then(BigInt);
 export const balanceOf = (a: string) => call(sel("balanceOf(address)") + pad(a));
 export const nextClaimAt = (a: string) => call(sel("nextClaimAt(address)") + pad(a));
 
