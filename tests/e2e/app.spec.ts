@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const PAGES = ["/", "/start", "/heist", "/sea", "/voyages", "/voyages/the-broken-cowrie", "/voyages/keys-and-seals", "/voyages/counting-shells", "/voyages/the-race", "/voyages/the-monsoon", "/voyages/the-corsair", "/voyages/proof-in-a-pocket", "/rules", "/real"];
+const PAGES = ["/", "/start", "/heist", "/sea", "/voyages", "/voyages/the-broken-cowrie", "/voyages/keys-and-seals", "/voyages/counting-shells", "/voyages/the-race", "/voyages/the-monsoon", "/voyages/the-corsair", "/voyages/proof-in-a-pocket", "/rules", "/real", "/coin"];
 
 function watch(page: Page) {
   const errs: string[] = [];
@@ -251,4 +251,13 @@ test("inspector: opening a block explains its proof of work and closes with Esca
 test("rules page is generated from the validator", async ({ page }) => {
   await page.goto("/rules");
   for (const code of ["block-pow", "block-reward", "tx-bad-signature", "tx-conflict", "block-merkle"]) await expect(page.getByText(code, { exact: true })).toBeVisible();
+});
+
+test("the coin page explains KDI honestly and links from the nav", async ({ page }) => {
+  await page.goto("/coin");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("KDI: Kaudi, on a real chain");
+  await expect(page.getByText("Worth nothing, on purpose")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Kaudi chain compared with the KDI token" })).toBeVisible();
+  await page.goto("/real");
+  await expect(page.getByRole("link", { name: "KDI" })).toHaveAttribute("href", "/coin");
 });

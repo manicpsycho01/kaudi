@@ -38,7 +38,7 @@ export default function Real() {
         <Group title="Left out, on purpose" tone="text-muted" items={LEFT_OUT} />
         <section className="mt-14 border border-coral/50 bg-coral-soft p-5 sm:p-6">
           <h2 className="display text-[1.6rem] text-coral">What Kaudi is not</h2>
-          <p className="mt-2 max-w-3xl text-ink-2">It isn&apos;t a cryptocurrency you can buy, sell or hold. There is no token sale, no mainnet and no wallet to connect. Its coins exist only in your tab and vanish when you close it. If anyone offers you KAUDI for money, it isn&apos;t this.</p>
+          <p className="mt-2 max-w-3xl text-ink-2">It isn&apos;t a cryptocurrency you can buy or sell. The chain&apos;s coins exist only in your tab and vanish when you close it. Its companion token, <Link className="text-brass underline underline-offset-4" href="/coin">KDI</Link>, lives only on a test network, where coins are free and worthless. There is no token sale and no mainnet. If anyone offers you KAUDI or KDI for money, it isn&apos;t this.</p>
         </section>
         <p className="mt-10 text-ink-2">The full rule set is on <Link className="text-brass underline underline-offset-4" href="/rules">the rules page</Link>, and the code — including the test suite — is <a className="text-brass underline underline-offset-4" href="https://github.com/manicpsycho01/kaudi">on GitHub</a>.</p>
       </main>

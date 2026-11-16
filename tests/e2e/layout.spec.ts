@@ -46,7 +46,7 @@ async function audit(page: Page, touch: number): Promise<string[]> {
   }, touch);
 }
 
-const PAGES = ["/", "/start", "/heist", "/sea", "/voyages", "/voyages/the-broken-cowrie", "/voyages/keys-and-seals", "/voyages/counting-shells", "/voyages/the-race", "/voyages/the-monsoon", "/voyages/the-corsair", "/voyages/proof-in-a-pocket", "/rules", "/real"];
+const PAGES = ["/", "/start", "/heist", "/sea", "/voyages", "/voyages/the-broken-cowrie", "/voyages/keys-and-seals", "/voyages/counting-shells", "/voyages/the-race", "/voyages/the-monsoon", "/voyages/the-corsair", "/voyages/proof-in-a-pocket", "/rules", "/real", "/coin"];
 
 for (const [w, h, touch] of VIEWPORTS) {
   test(`layout ${w}x${h}: every page`, async ({ browser }, info) => {

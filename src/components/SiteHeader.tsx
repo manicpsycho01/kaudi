@@ -6,6 +6,7 @@ const NAV = [
   { href: "/voyages", label: "Voyages" },
   { href: "/heist", label: "Heist" },
   { href: "/sea", label: "The sea" },
+  { href: "/coin", label: "The coin" },
   { href: "/rules", label: "Rules", wide: true },
   { href: "/real", label: "What's real", wide: true },
 ] as { href: string; label: string; wide?: boolean }[];
